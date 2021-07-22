@@ -3,17 +3,35 @@
 namespace WPNexus;
 
 class Plugin {
+  /**
+   * Initialize plugin.
+   */
   public static function init() {
     // Set up admin hooks
     if ( is_admin() ) {
+      register_activation_hook( WPNEXUS_PLUGIN_FILE, array(static::class, 'onActivate') );
+
       add_filter( 'allowed_http_origin', array(static::class, 'cors') );
       add_action( 'wp_ajax_wpnexus_ajax', array(static::class, 'handleAjax') );
       add_action( 'admin_menu', array(static::class, 'adminMenu') );
       add_action( 'admin_enqueue_scripts', array(static::class, 'registerAdminStyles') );
       add_action( 'init', array(static::class, 'runFrameworkElementInitHooks') );
 
-      \WPNexus\Api::registerApiMethod('compiler::updateFrameworkElements', '\WPNexus\Compiler::updateFrameworkElements($params["updatedData"]);');
-      \WPNexus\Api::registerApiMethod('compiler::getFrameworkElements', 'return \WPNexus\Compiler::getFrameworkElements();');
+      \WPNexus\Api\CompilerApi::init();
+      \WPNexus\Api\PluginApi::init();
+    }
+  }
+
+  /**
+   * On plugin activation
+   */
+  public static function onActivate() {
+    global $table_prefix, $wpdb;
+    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
+    if( $wpdb->get_var( "show tables like '$wpnexusPluginsTable'" ) != $wpnexusPluginsTable ) {
+      $sql = \str_replace('WPSUFFIX_', $table_prefix, \file_get_contents(__DIR__ . '/../db/init.sql'));
+      require_once( ABSPATH . '/wp-admin/includes/upgrade.php' );
+      \dbDelta($sql);
     }
   }
 
