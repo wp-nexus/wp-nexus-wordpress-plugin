@@ -49,7 +49,7 @@ class PluginApi {
   public static function deletePlugin($params) {
     global $table_prefix, $wpdb;
     $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
-    return $wpdb->delet( $wpnexusPluginsTable, array('id' => $params['id']), array('%d') );
+    return $wpdb->delete( $wpnexusPluginsTable, array('id' => $params['id']), array('%d') );
   }
 
 }
