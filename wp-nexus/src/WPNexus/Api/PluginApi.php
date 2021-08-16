@@ -12,22 +12,43 @@ class PluginApi {
     \WPNexus\Api::registerApiMethod('plugin::delete', array(static::class, 'deletePlugin'));
   }
 
+  private static function getPluginsTable() {
+    global $table_prefix;
+    return $table_prefix . 'wpnexus_plugin';
+  }
+
   public static function listPlugins() {
-    global $table_prefix, $wpdb;
-    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
+    global $wpdb;
+    $wpnexusPluginsTable = self::getPluginsTable();
     return $wpdb->get_results( "SELECT id, name FROM $wpnexusPluginsTable" );
   }
 
   public static function getPlugin($params) {
-    global $table_prefix, $wpdb;
-    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
+    global $wpdb;
+    $wpnexusPluginsTable = self::getPluginsTable();
     $id = intval($params['id']);
-    return $wpdb->get_row( "SELECT * FROM `$wpnexusPluginsTable` WHERE `id` = $id" );
+    $plugin = $wpdb->get_row( "SELECT * FROM $wpnexusPluginsTable WHERE id = $id" );
+    $code = json_decode($plugin->code, true);
+    
+    $frameworkElements = \WPNexus\Compiler::getFrameworkElements();
+    if (is_array($frameworkElements)) {
+      foreach ($frameworkElements as $frameworkElement) {
+        if (isset($frameworkElement['hooks']) && isset($frameworkElement['hooks']['pluginLoading'])) {
+          try {
+            eval($frameworkElement['hooks']['pluginLoading']);
+          } catch (\Exception $err) {
+          }
+        }
+      }
+    }
+
+    $plugin->code = json_encode($code);
+    return $plugin;
   }
 
   public static function createPlugin($params) {
-    global $table_prefix, $wpdb;
-    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
+    global $wpdb;
+    $wpnexusPluginsTable = self::getPluginsTable();
     $insert = array(
       'name' => $params['name'],
       'code' => $params['code']
@@ -37,18 +58,18 @@ class PluginApi {
   }
 
   public static function updatePlugin($params) {
-    global $table_prefix, $wpdb;
-    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
-    $insert = array(
+    global $wpdb;
+    $wpnexusPluginsTable = self::getPluginsTable();
+    $update = array(
       'name' => $params['name'],
       'code' => $params['code']
     );
-    return $wpdb->update( $wpnexusPluginsTable, $insert, array('%s', '%s'), array('id' => $params['id']), array('%d') );
+    return $wpdb->update( $wpnexusPluginsTable, $update, array('id' => intval($params['id'])), array('%s', '%s'), array('%d') );
   }
 
   public static function deletePlugin($params) {
-    global $table_prefix, $wpdb;
-    $wpnexusPluginsTable = $table_prefix . 'wpnexus_plugin';
+    global $wpdb;
+    $wpnexusPluginsTable = self::getPluginsTable();
     return $wpdb->delete( $wpnexusPluginsTable, array('id' => $params['id']), array('%d') );
   }
 
